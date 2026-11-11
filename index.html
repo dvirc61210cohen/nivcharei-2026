@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#704cff">
   <title>נבחרי ונבחרות השנה 2026 | נוער קרית נטפים</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap">
+  <!-- ספרית Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --ink: #20213a;
@@ -201,7 +203,6 @@
       margin-top: 9px;
     }
 
-    /* Voter Section */
     .user-section {
       background: #fff;
       border: 1px solid #ededf5;
@@ -416,7 +417,6 @@
       cursor: pointer;
     }
 
-    /* Modal Backdrop */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -455,7 +455,6 @@
       place-items: center;
     }
 
-    /* Admin Cards Dashboard */
     .admin-stats-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -543,7 +542,6 @@
       </div>
     </section>
 
-    <!-- Voter Profile -->
     <section class="user-section">
       <h2>👋 פרטי המצביע/ה</h2>
       <div class="form-grid">
@@ -572,7 +570,6 @@
       <span class="progress-text" id="progressText">הושלמו 0 מתוך 12 קטגוריות</span>
     </section>
 
-    <!-- Categories -->
     <section class="intro" id="categories">
       <div>
         <span class="eyebrow">הקטגוריות שלנו</span>
@@ -583,7 +580,6 @@
 
     <section class="category-list" id="categoryList"></section>
 
-    <!-- Submit Panel -->
     <section class="submit-panel">
       <div style="font-size:36px; margin-bottom:8px;">🏆</div>
       <h2 style="margin:0 0 8px; font-size:22px;">מוכנים לשלוח?</h2>
@@ -597,7 +593,6 @@
     <span>נוער קרית נטפים · 2026</span>
   </footer>
 
-  <!-- Admin Pass Modal -->
   <div class="modal-backdrop" id="adminPassModal" hidden>
     <div class="modal" style="width:360px; text-align:center;">
       <button class="modal-close" onclick="document.getElementById('adminPassModal').hidden=true">✕</button>
@@ -608,14 +603,13 @@
     </div>
   </div>
 
-  <!-- Admin Modal (1:1 Design match) -->
   <div class="modal-backdrop" id="adminDashboardModal" hidden>
     <div class="modal">
       <button class="modal-close" onclick="document.getElementById('adminDashboardModal').hidden=true">✕</button>
       <div style="text-align:right;">
         <span class="small-btn" style="background:#ecfdf5; color:#059669; border:0;">מחובר כמנהל</span>
         <h2 style="margin:8px 0 2px; font-size:24px;">פאנל ניהול נבחרי השנה 2026</h2>
-        <p style="margin:0; font-size:13px; color:var(--muted);">מידע פנימי - סך הכל הצבעות וניהול הצעות מועמדים</p>
+        <p style="margin:0; font-size:13px; color:var(--muted);">מידע פנימי - סך הכל הצבעות ונתונים בזמן אמת</p>
       </div>
 
       <div class="admin-stats-grid">
@@ -638,7 +632,6 @@
     </div>
   </div>
 
-  <!-- Thank You Modal -->
   <div class="modal-backdrop" id="thankYouModal" hidden>
     <div class="modal" style="text-align:center;">
       <div style="font-size:48px;">🎉</div>
@@ -650,6 +643,11 @@
   </div>
 
   <script>
+    // חיבור ל-Supabase עם הפרטים שלך
+    const SUPABASE_URL = 'https://xruuadogtcbvgnzbwihy.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_Zm1qjkgRklaGulTP3Rz57A_wIcYKdUs';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const categoriesData = [
       { id: 1, title: "מדריך השנה", icon: "🧭", accent: "#7656e8", soft: "#f1edff", candidates: ["אריאל קרואני", "דביר כהן", "שגיא מדמון", "אילון גוט", "איתן עמבר"] },
       { id: 2, title: "מדריכת השנה", icon: "🌷", accent: "#e65b9e", soft: "#fff0f7", candidates: ["תהילה תורגמן", "אביב צור", "אגם אריה", "נועה ניסנוביץ", "אילה אביעד"] },
@@ -666,7 +664,6 @@
     ];
 
     let userVotes = {};
-    let votesHistory = [];
 
     const container = document.getElementById('categoryList');
     categoriesData.forEach(cat => {
@@ -716,7 +713,8 @@
       document.getElementById('progressText').innerText = `הושלמו ${count} מתוך 12 קטגוריות`;
     }
 
-    document.getElementById('submitAllBtn').addEventListener('click', () => {
+    // שליחת ההצבעה לענן של Supabase
+    document.getElementById('submitAllBtn').addEventListener('click', async () => {
       const name = document.getElementById('voterName').value.trim();
       const shevet = document.getElementById('voterShevet').value;
 
@@ -731,9 +729,17 @@
         return;
       }
 
-      votesHistory.push({ name, shevet, votes: { ...userVotes } });
-      document.getElementById('voterCountDisplay').innerText = votesHistory.length;
-      document.getElementById('thankYouModal').hidden = false;
+      const { error } = await supabaseClient
+        .from('votes')
+        .insert([{ name: name, shevet: shevet, votes_data: userVotes }]);
+
+      if (error) {
+        alert('אירעה שגיאה בשמירת ההצבעה, נסו שוב.');
+        console.error(error);
+      } else {
+        document.getElementById('thankYouModal').hidden = false;
+        updateLiveVoterCount();
+      }
     });
 
     document.getElementById('openAdminBtn').addEventListener('click', () => {
@@ -750,18 +756,69 @@
       }
     }
 
-    function renderAdminStats() {
+    // טעינת נתונים אמיתיים בפאנל המנהל מתוך Supabase
+    async function renderAdminStats() {
+      const { data: votesHistory, error } = await supabaseClient
+        .from('votes')
+        .select('*');
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
       document.getElementById('adminTotalVoters').innerText = votesHistory.length;
-      document.getElementById('adminTopShevet').innerText = votesHistory.length ? votesHistory[0].shevet : 'נחשון';
+
+      const shevetCounts = {};
+      votesHistory.forEach(v => {
+        shevetCounts[v.shevet] = (shevetCounts[v.shevet] || 0) + 1;
+      });
+
+      let topShevet = '-';
+      let maxCount = 0;
+      for (let s in shevetCounts) {
+        if (shevetCounts[s] > maxCount) {
+          maxCount = shevetCounts[s];
+          topShevet = s;
+        }
+      }
+      document.getElementById('adminTopShevet').innerText = topShevet;
 
       const list = document.getElementById('adminLeadersList');
-      list.innerHTML = categoriesData.map(cat => `
-        <div class="leader-row">
-          <span><strong>${cat.title}:</strong></span>
-          <span style="color:var(--purple); font-weight:700;">מוביל (1 קולות)</span>
-        </div>
-      `).join('');
+      list.innerHTML = categoriesData.map(cat => {
+        const candVotes = {};
+        votesHistory.forEach(v => {
+          const picked = v.votes_data[cat.id];
+          if (picked) candVotes[picked] = (candVotes[picked] || 0) + 1;
+        });
+        
+        let topCand = 'אין עדיין';
+        let topCandVotes = 0;
+        for (let c in candVotes) {
+          if (candVotes[c] > topCandVotes) {
+            topCandVotes = candVotes[c];
+            topCand = c;
+          }
+        }
+
+        return `
+          <div class="leader-row">
+            <span><strong>${cat.title}:</strong></span>
+            <span style="color:var(--purple); font-weight:700;">${topCand} (${topCandVotes} קולות)</span>
+          </div>
+        `;
+      }).join('');
     }
+
+    async function updateLiveVoterCount() {
+      const { count, error } = await supabaseClient
+        .from('votes')
+        .select('*', { count: 'exact', head: true });
+      if (!error && count !== null) {
+        document.getElementById('voterCountDisplay').innerText = count;
+      }
+    }
+    updateLiveVoterCount();
 
     function shareOnWhatsapp() {
       const text = encodeURIComponent("הצבעתי כבר בנבחרי ונבחרות השנה 2026 נוער קרית נטפים! 🏆 יאללה כנסו גם להצביע!");
